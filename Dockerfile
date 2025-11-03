@@ -70,27 +70,18 @@ exit 1' > /usr/local/bin/php-fpm-healthcheck \
 # Criar script de inicialização do Laravel
 RUN echo '#!/bin/bash\n\
 \n\
-# Aguardar banco de dados estar pronto (máximo 60 tentativas = 2 minutos)\n\
-echo "Aguardando banco de dados ficar pronto..."\n\
-for i in {1..60}; do\n\
-  if php artisan db:show > /dev/null 2>&1; then\n\
-    echo "Banco de dados conectado!"\n\
-    break\n\
+# Função para configurar Laravel (executa em background)\n\
+setup_laravel() {\n\
+  if [ ! -f artisan ]; then\n\
+    return 0\n\
   fi\n\
-  if [ $i -eq 60 ]; then\n\
-    echo "Aviso: Não foi possível conectar ao banco de dados, mas continuando..."\n\
-  fi\n\
-  sleep 2\n\
-done\n\
-\n\
-# Executar comandos do Laravel\n\
-if [ -f artisan ]; then\n\
+  \n\
   echo "Configurando Laravel..."\n\
   \n\
   # Configurar permissões\n\
-  mkdir -p /var/www/html/storage/framework/{sessions,views,cache}\n\
-  mkdir -p /var/www/html/storage/logs\n\
-  mkdir -p /var/www/html/bootstrap/cache\n\
+  mkdir -p /var/www/html/storage/framework/{sessions,views,cache} 2>/dev/null || true\n\
+  mkdir -p /var/www/html/storage/logs 2>/dev/null || true\n\
+  mkdir -p /var/www/html/bootstrap/cache 2>/dev/null || true\n\
   chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true\n\
   chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true\n\
   \n\
@@ -100,8 +91,16 @@ if [ -f artisan ]; then\n\
   php artisan route:clear 2>/dev/null || true\n\
   php artisan view:clear 2>/dev/null || true\n\
   \n\
-  # Executar migrações (sem falhar se der erro)\n\
-  php artisan migrate --force 2>/dev/null || echo "Migrações já executadas ou erro ignorado"\n\
+  # Aguardar banco brevemente e executar migrações (timeout de 30s)\n\
+  echo "Verificando banco de dados..."\n\
+  for i in {1..15}; do\n\
+    if php artisan db:show > /dev/null 2>&1; then\n\
+      echo "Banco conectado! Executando migrações..."\n\
+      php artisan migrate --force 2>/dev/null || echo "Migrações já executadas"\n\
+      break\n\
+    fi\n\
+    sleep 2\n\
+  done\n\
   \n\
   # Otimizar aplicação (produção)\n\
   if [ "$APP_ENV" = "production" ] || [ -z "$APP_ENV" ]; then\n\
@@ -112,9 +111,12 @@ if [ -f artisan ]; then\n\
   fi\n\
   \n\
   echo "Laravel configurado!"\n\
-fi\n\
+}\n\
 \n\
-# Iniciar PHP-FPM\n\
+# Executar setup em background para não bloquear\n\
+setup_laravel &\n\
+\n\
+# Iniciar PHP-FPM imediatamente\n\
 echo "Iniciando PHP-FPM..."\n\
 exec php-fpm' > /usr/local/bin/docker-entrypoint.sh \
     && chmod +x /usr/local/bin/docker-entrypoint.sh
