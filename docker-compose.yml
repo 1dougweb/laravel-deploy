@@ -11,11 +11,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
+      test: ["CMD-SHELL", "php-fpm-healthcheck"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
     depends_on:
       db:
         condition: service_healthy

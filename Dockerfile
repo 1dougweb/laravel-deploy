@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     procps \
+    net-tools \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -51,7 +52,19 @@ RUN sed -i 's/pm.max_children = 5/pm.max_children = 50/' /usr/local/etc/php-fpm.
 
 # Criar script de health check para PHP-FPM
 RUN echo '#!/bin/sh\n\
-pgrep php-fpm > /dev/null 2>&1' > /usr/local/bin/php-fpm-healthcheck \
+# Verificar se a porta 9000 está escutando (PHP-FPM)\n\
+if netstat -an 2>/dev/null | grep -q ":9000.*LISTEN" || ss -an 2>/dev/null | grep -q ":9000.*LISTEN"; then\n\
+  exit 0\n\
+fi\n\
+# Verificar se o processo php-fpm está rodando\n\
+if ps aux | grep -q "[p]hp-fpm: master"; then\n\
+  exit 0\n\
+fi\n\
+# Verificar socket do PHP-FPM\n\
+if [ -S /var/run/php/php8.2-fpm.sock ] || [ -S /var/run/php-fpm.sock ]; then\n\
+  exit 0\n\
+fi\n\
+exit 1' > /usr/local/bin/php-fpm-healthcheck \
     && chmod +x /usr/local/bin/php-fpm-healthcheck
 
 # Criar script de inicialização do Laravel
