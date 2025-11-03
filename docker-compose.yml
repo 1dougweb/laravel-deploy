@@ -2,6 +2,8 @@ version: '3'
 services:
     app:
         image: ghcr.io/archielite/laravel:php8.1
+        container_name: laravel-app
+        restart: unless-stopped
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -10,27 +12,38 @@ services:
             - '.:/var/www/html'
         networks:
             - sail
+        healthcheck:
+            test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/up"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 60s
         depends_on:
-            - mysql
+            mysql:
+                condition: service_healthy
     mysql:
         image: 'mysql/mysql-server:8.0'
+        container_name: laravel-mysql
+        restart: unless-stopped
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         environment:
-            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD:-Graffs@500}'
             MYSQL_ROOT_HOST: "%"
-            MYSQL_DATABASE: '${DB_DATABASE}'
-            MYSQL_USER: '${DB_USERNAME}'
-            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_DATABASE: '${DB_DATABASE:-laravel}'
+            MYSQL_USER: '${DB_USERNAME:-root}'
+            MYSQL_PASSWORD: '${DB_PASSWORD:-Graffs@500}'
             MYSQL_ALLOW_EMPTY_PASSWORD: 1
         volumes:
             - 'sail-mysql:/var/lib/mysql'
         networks:
             - sail
         healthcheck:
-            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
-            retries: 3
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-Graffs@500}"]
+            interval: 10s
             timeout: 5s
+            retries: 5
+            start_period: 30s
 networks:
     sail:
         driver: bridge
