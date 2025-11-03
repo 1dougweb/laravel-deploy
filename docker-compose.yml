@@ -10,6 +10,12 @@ services:
             - '${APP_PORT:-80}:80'
         volumes:
             - '.:/var/www/html'
+        environment:
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=${DB_DATABASE:-laravel}
+            - DB_USERNAME=${DB_USERNAME:-root}
+            - DB_PASSWORD=${DB_PASSWORD:-Graffs@500}
         networks:
             - sail
         healthcheck:
