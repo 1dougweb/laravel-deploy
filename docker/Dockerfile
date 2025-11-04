@@ -61,8 +61,10 @@ RUN groupadd --force -g ${WWWGROUP:-1000} sail || true
 RUN useradd -ms /bin/bash --no-user-group -g ${WWWGROUP:-1000} -u 1337 sail || usermod -g ${WWWGROUP:-1000} sail || true
 RUN git config --global --add safe.directory /var/www/html
 
-# Copy nginx configuration
+# Remove default nginx configuration and copy our custom one
+RUN rm -f /etc/nginx/sites-enabled/default
 COPY docker/nginx.conf /etc/nginx/sites-available/default
+RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 COPY docker/php-fpm.conf /etc/php/8.4/fpm/pool.d/www.conf
 
 # Copy startup script

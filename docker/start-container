@@ -25,6 +25,14 @@ chmod -R 755 /var/www/html
 chmod -R 775 /var/www/html/storage
 chmod -R 775 /var/www/html/bootstrap/cache
 
+# Ensure nginx configuration is correct
+if [ ! -L /etc/nginx/sites-enabled/default ]; then
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+fi
+
+# Test nginx configuration
+nginx -t || exit 1
+
 if [ $# -gt 0 ]; then
     if [ "$SUPERVISOR_PHP_USER" = "root" ]; then
         exec "$@"
